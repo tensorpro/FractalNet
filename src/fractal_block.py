@@ -15,19 +15,21 @@ def join(t):
 
     
 def fractal_block(incoming, filters, ncols=4, fsize=[3,3],
-                  joined=False, reuse=False, scope=None, name="FractalBlock"):
-    col = "Col{}".format(ncols)
-    with tf.variable_op_scope([incoming], scope, name, reuse=reuse) as scope:
-        net = fractal_expand(incoming, filters, ncols, fsize, joined)
-    return net
-        
-def fractal_expand(incoming, filters, ncols, fsize=[3,3], joined=False):
-    col = "Col{}".format(ncols)
-    left = [tflearn.conv_2d(incoming, filters, fsize, name=col, activation='relu')]
-    if(ncols==1):
-        return left
-    right = join(fractal_expand(incoming, filters, ncols-1, fsize))
-    right = fractal_expand(right, filters, ncols-1, fsize)
-    out =  left + right
-    return join(out) if joined else out
+                  joined=True, reuse=False, scope=None, name="FractalBlock"):
+    
+    def conv_block(incoming, col):
+        net = tflearn.conv_2d(incoming, filters, fsize,
+                              name='Col{}'.format(col), activation='relu')
+        return net
+    def fractal_expand(incoming, col=0):
+        left = [conv_block(incoming, col)]
+        if(col==ncols-1):
+            return left
+        right = join(fractal_expand(incoming, col+1))
+        right = fractal_expand(right, col+1)
+        out =  left + right
+        return out
 
+    with tf.variable_op_scope([incoming], scope, name, reuse=reuse) as scope:
+        out = fractal_expand(incoming)
+        return join(out) if joined else out
