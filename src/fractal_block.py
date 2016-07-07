@@ -22,7 +22,7 @@ def fractal_block(incoming, filters, ncols=4, fsize=[3,3],
 
     def conv_block(incoming, col):
         conv = tflearn.conv_2d(incoming, filters, fsize,
-                              name='Col{}'.format(col), activation='relu')
+                               name='Col{}'.format(col), activation='relu')
         Ws[col].append(conv.W)
         bs[col].append(conv.b)
         return conv
@@ -44,17 +44,21 @@ def fractal_block(incoming, filters, ncols=4, fsize=[3,3],
             net=join(out) if joined else out
         return net
 
+
+    def random_col(cols):
+        with tf.variable_op_scope(cols, "RandomColumn"):
+            col_idx = tf.random_uniform([],0,len(cols),'int32')
+            return tf.gather(cols, col_idx)
     
     def seperated(name="Seperated"):
-        # with tf.variable_op_scope([incoming], scope, name, reuse=reuse) as scope:
         with tf.name_scope(name) as scope:
             sep = [incoming] * ncols
             for col in range(ncols):
                 with tf.name_scope("Column_{}".format(col)):
                     for W, b in zip(Ws[col], bs[col]):
-                        sep[col] = tf.nn.relu(tf.nn.conv2d(sep[col], W, [1,1,1,1], 'SAME') + b)
-            sep = join(sep)
-        return sep
+                        with tf.variable_op_scope([incoming], None, "ConvBlock"):
+                            sep[col] = tf.nn.relu(tf.nn.conv2d(sep[col], W, [1,1,1,1], 'SAME') + b)
+            return random_col(sep)
 
     is_training = tflearn.get_training_mode()
     
@@ -62,7 +66,7 @@ def fractal_block(incoming, filters, ncols=4, fsize=[3,3],
         fractal = together()
         columns = seperated()
         with tf.variable_op_scope([incoming],"DropPath"):
-            global_drop = tf.logical_and(is_training, tf.random_uniform([1])[0]>.5)
+            global_drop = tf.logical_and(is_training, tf.random_uniform([])>.5)
             net = tf.cond(global_drop, lambda: columns, lambda: fractal, name="DropPath")
     return net
 
