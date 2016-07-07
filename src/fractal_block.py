@@ -38,28 +38,32 @@ def fractal_block(incoming, filters, ncols=4, fsize=[3,3],
 
     
     def together(name="Fractal"):
-        # with tf.variable_op_scope([incoming], scope, name, reuse=reuse) as scope:
-        with tf.name_scope(name) as scope:
+        with tf.variable_op_scope([incoming], None, name, reuse=reuse) as scope:
+        # with tf.name_scope(name) as scope:
             out = fractal_expand(incoming)
             net=join(out) if joined else out
         return net
 
     
-    def seperated(name="Columns"):
+    def seperated(name="Seperated"):
         # with tf.variable_op_scope([incoming], scope, name, reuse=reuse) as scope:
         with tf.name_scope(name) as scope:
             sep = [incoming] * ncols
             for col in range(ncols):
-                for W, b in zip(Ws[col], bs[col]):
-                    sep[col] = tf.nn.relu(tf.nn.conv2d(sep[col], W, [1,1,1,1], 'SAME') + b)
+                with tf.name_scope("Column_{}".format(col)):
+                    for W, b in zip(Ws[col], bs[col]):
+                        sep[col] = tf.nn.relu(tf.nn.conv2d(sep[col], W, [1,1,1,1], 'SAME') + b)
             sep = join(sep)
         return sep
 
+    is_training = tflearn.get_training_mode()
+    
     with tf.variable_op_scope([incoming], scope, name, reuse=reuse) as scope:
-        fractal = join(fractal_expand(incoming))
+        fractal = together()
         columns = seperated()
-        is_training = tflearn.get_training_mode()
-        net = tf.cond(is_training, lambda: columns, lambda: fractal)
+        with tf.variable_op_scope([incoming],"DropPath"):
+            global_drop = tf.logical_and(is_training, tf.random_uniform([1])[0]>.5)
+            net = tf.cond(global_drop, lambda: columns, lambda: fractal, name="DropPath")
     return net
 
 # remember tf.mul
