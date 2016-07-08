@@ -5,23 +5,27 @@ import tflearn
 from tensorflow import transpose as T
 from tensorflow import mul
 
-def tensor_shape(t):
+def tensor_shape(tensor):
     return t.get_shape().as_list()
 
-def join(t, drop_prob = .85):
-    if len(t)==1:
-        return t[0]
-    with tf.name_scope("Join"):
-        size = len(t)-1
-        joined=tf.reduce_mean(t,0)
-        out = tf.convert_to_tensor(t)
+def local_drop(cols, drop_prob=.85):
+    size = len(cols)-1
+    with tf.variable_op_scope(cols, None, "LocalDropPath"):
+        out = tf.to_float(cols)
         drop_mask = tf.to_float(tf.concat(0,[[1],tf.random_uniform([size])])>drop_prob)
-        masked = T(mul(T(out),drop_mask))
-        dropped = tf.reduce_sum(masked)/tf.reduce_sum(drop_mask)
-        tf.cond(tflearn.get_training_mode(), lambda: dropped, lambda: joined)
-        return joined
+        masked = T(mul(T(out),tf.random_shuffle(drop_mask)))
+        dropped = tf.reduce_sum(masked,0)/tf.reduce_sum(drop_mask,0)
+    return dropped
 
-    
+def join(cols, drop_prob = .15):
+    if len(cols)==1:
+        return cols[0]
+    with tf.variable_op_scope(cols, None, "Join"):
+        joined=tf.reduce_mean(cols,0)
+        out = tf.cond(tflearn.get_training_mode(),
+                      lambda: local_drop(cols, drop_prob), lambda: joined)
+    return joined
+
 def fractal_block(incoming, filters, ncols=3, fsize=[3,3],
                   joined=True, reuse=False, scope=None, name="FractalBlock"):
 
