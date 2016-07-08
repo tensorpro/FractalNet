@@ -36,7 +36,6 @@ for block, filters in enumerate([64,128,256,512,512]):
     network = tflearn.max_pool_2d(network, 2)
 
 network = fully_connected(network, 10, activation='softmax')
-# mom = tflearn.Momentum()
 network = regression(network, optimizer='adam',
                      loss='categorical_crossentropy',
                      learning_rate=0.001)
