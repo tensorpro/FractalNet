@@ -30,11 +30,13 @@ def fractal_block(incoming, filters, ncols=3, fsize=[3,3],
 
     def conv_block(incoming, col):
         conv = tflearn.conv_2d(incoming, filters, fsize, weights_init ='xavier',
-                               activation='relu',
+                               activation='linear',
                                name='Col{}'.format(col))
+        net = tflearn.batch_normalization(conv)
+        net = tflearn.activation(net, 'relu')
         Ws[col].append(conv.W)
         bs[col].append(conv.b)
-        return conv
+        return net
 
     def fractal_expand(incoming, col=0):
         left = [conv_block(incoming, col)]
@@ -66,7 +68,8 @@ def fractal_block(incoming, filters, ncols=3, fsize=[3,3],
                 with tf.name_scope("Column_{}".format(col)):
                     for W, b in zip(Ws[col], bs[col]):
                         with tf.variable_op_scope([incoming], None, "ConvBlock"):
-                            sep[col] = tf.nn.relu(tf.nn.conv2d(sep[col], W, [1,1,1,1], 'SAME') + b)
+                            conv = (tf.nn.conv2d(sep[col], W, [1,1,1,1], 'SAME') + b)
+                            sep[col] = tf.nn.relu(tflearn.batch_normalization(conv))
             return random_col(sep)
 
     is_training = tflearn.get_training_mode()
