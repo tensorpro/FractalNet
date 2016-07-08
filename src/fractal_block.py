@@ -62,14 +62,16 @@ def fractal_block(incoming, filters, ncols=3, fsize=[3,3],
             return tf.gather(cols, col_idx)
     
     def seperated(name="Seperated"):
-        with tf.name_scope(name) as scope:
+        with tf.variable_op_scope([incoming], None, name) as scope:
+        # with tf.name_scope(name) as scope:
             sep = [incoming] * ncols
             for col in range(ncols):
-                with tf.name_scope("Column_{}".format(col)):
-                    for W, b in zip(Ws[col], bs[col]):
-                        with tf.variable_op_scope([incoming], None, "ConvBlock"):
+                with tf.variable_op_scope([],None,"Column_{}".format(col)):
+                    for idx, (W, b) in enumerate(zip(Ws[col], bs[col])):
+                        with tf.variable_op_scope([incoming], None, "ConvBlock") as scope:
                             conv = (tf.nn.conv2d(sep[col], W, [1,1,1,1], 'SAME') + b)
-                            sep[col] = tf.nn.relu(tflearn.batch_normalization(conv))
+                            conv = tflearn.batch_normalization(conv)
+                            sep[col] = tf.nn.relu(conv)
             return random_col(sep)
 
     is_training = tflearn.get_training_mode()
