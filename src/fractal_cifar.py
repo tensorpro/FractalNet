@@ -22,7 +22,7 @@ img_prep.add_featurewise_stdnorm()
 # Real-time data augmentation
 img_aug = ImageAugmentation()
 img_aug.add_random_flip_leftright()
-img_aug.add_random_rotation(max_angle=25.)
+# img_aug.add_random_rotation(max_angle=25.)
 
 # Convolutional network building
 
@@ -31,17 +31,17 @@ img_aug.add_random_rotation(max_angle=25.)
 network = input_data(shape=[None, 32, 32, 3],
                      data_preprocessing=img_prep,
                      data_augmentation=img_aug)
-for block, filters in enumerate([16,32,64]):
-    network = fractal_block(network, filters, 4, 3, joined=True)
-    network = tflearn.dropout(network, .5)
+for block, filters in enumerate([64,128,256,512,512]):
+    network = fractal_block(network, filters, 2, 2, joined=True)
     network = tflearn.max_pool_2d(network, 2)
 
 network = fully_connected(network, 10, activation='softmax')
+# mom = tflearn.Momentum()
 network = regression(network, optimizer='adam',
                      loss='categorical_crossentropy',
                      learning_rate=0.001)
 
 # Train using classifier
 model = tflearn.DNN(network, tensorboard_verbose=0)
-model.fit(X, Y, n_epoch=50, shuffle=True, validation_set=(X_test, Y_test),
-          show_metric=True, batch_size=512, run_id='cifar10')
+model.fit(X, Y, n_epoch=500, shuffle=True, validation_set=(X_test, Y_test),
+          show_metric=True, batch_size=256, run_id='cifar10')
