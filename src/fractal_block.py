@@ -8,14 +8,14 @@ from tensorflow import mul
 def tensor_shape(t):
     return t.get_shape().as_list()
 
-def join(t, keep_prob = .85):
+def join(t, drop_prob = .85):
     if len(t)==1:
         return t[0]
     with tf.name_scope("Join"):
         size = len(t)-1
         joined=tf.reduce_mean(t,0)
         out = tf.convert_to_tensor(t)
-        drop_mask = tf.to_float(tf.concat(0,[[1],tf.random_uniform([size])])>keep_prob)
+        drop_mask = tf.to_float(tf.concat(0,[[1],tf.random_uniform([size])])>drop_prob)
         masked = T(mul(T(out),drop_mask))
         dropped = tf.reduce_sum(masked)/tf.reduce_sum(drop_mask)
         tf.cond(tflearn.get_training_mode(), lambda: dropped, lambda: joined)
