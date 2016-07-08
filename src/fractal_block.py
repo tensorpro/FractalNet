@@ -2,7 +2,7 @@ from __future__ import print_function, division
 import tensorflow as tf
 import numpy as np
 import tflearn
-import tensorflow.transpose as T
+from tensorflow import transpose as T
 from tensorflow import mul
 
 def tensor_shape(t):
@@ -15,22 +15,23 @@ def join(t, keep_prob = .15):
         size = len(t)-1
         joined=tf.reduce_mean(t,0)
         out = tf.convert_to_tensor(t)
-        drop_mask = tf.to_int32(tf.concat(0,[1],tf.random_uniform([shape]))>0)
-        masked = T(mul(T(x),to_drop))
+        drop_mask = tf.to_float(tf.concat(0,[[1],tf.random_uniform([size])])>0)
+        masked = T(mul(T(out),drop_mask))
         dropped = tf.reduce_sum(masked)/tf.reduce_sum(drop_mask)
-        case(tflearn.get_training_mode, lambda: dropped, lambda: joined)
+        tf.cond(tflearn.get_training_mode(), lambda: dropped, lambda: joined)
         return joined
 
     
-def fractal_block(incoming, filters, ncols=4, fsize=[3,3],
+def fractal_block(incoming, filters, ncols=3, fsize=[3,3],
                   joined=True, reuse=False, scope=None, name="FractalBlock"):
 
     Ws = [[] for _ in range(ncols)]
     bs = [[] for _ in range(ncols)]
 
     def conv_block(incoming, col):
-        conv = tflearn.conv_2d(incoming, filters, fsize,
-                               name='Col{}'.format(col), activation='relu')
+        conv = tflearn.conv_2d(incoming, filters, fsize, weights_init ='xavier',
+                               activation='relu',
+                               name='Col{}'.format(col))
         Ws[col].append(conv.W)
         bs[col].append(conv.b)
         return conv
