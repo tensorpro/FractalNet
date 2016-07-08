@@ -2,15 +2,23 @@ from __future__ import print_function, division
 import tensorflow as tf
 import numpy as np
 import tflearn
+import tensorflow.transpose as T
+from tensorflow import mul
 
 def tensor_shape(t):
     return t.get_shape().as_list()
 
-def join(t):
+def join(t, keep_prob = .15):
     if len(t)==1:
         return t[0]
     with tf.name_scope("Join"):
-        joined=tflearn.dropout(tf.reduce_mean(t,0), .5, name="Join")
+        size = len(t)-1
+        joined=tf.reduce_mean(t,0)
+        out = tf.convert_to_tensor(t)
+        drop_mask = tf.to_int32(tf.concat(0,[1],tf.random_uniform([shape]))>0)
+        masked = T(mul(T(x),to_drop))
+        dropped = tf.reduce_sum(masked)/tf.reduce_sum(drop_mask)
+        case(tflearn.get_training_mode, lambda: dropped, lambda: joined)
         return joined
 
     
