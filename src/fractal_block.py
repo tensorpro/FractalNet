@@ -33,7 +33,7 @@ def fractal_block(incoming, filters, ncols=3, fsize=[3,3],
     bs = [[] for _ in range(ncols)]
 
     def conv_block(incoming, col):
-        with tf.variable_op_scope([incoming],None,"Column_{}".format(col)):
+        with tf.variable_op_scope([incoming], None, "Column_{}".format(col)):
             conv = tflearn.conv_2d(incoming, filters, fsize, weights_init ='xavier',
                                    activation='linear')
             net = tflearn.batch_normalization(conv)
@@ -53,21 +53,19 @@ def fractal_block(incoming, filters, ncols=3, fsize=[3,3],
 
     
     def together(name="Fractal"):
-        with tf.variable_op_scope([incoming], None, name, reuse=reuse) as scope:
-        # with tf.name_scope(name) as scope:
+        with tf.variable_op_scope([incoming], None, name) as scope:
             out = fractal_expand(incoming)
             net=join(out) if joined else out
         return net
 
 
-    def random_col(cols):
-        with tf.variable_op_scope(cols, "RandomColumn"):
+    def random_col(cols, name='RandomColumn'):
+        with tf.variable_op_scope(cols, name):
             col_idx = tf.random_uniform([],0,len(cols),'int32')
             return tf.gather(cols, col_idx)
     
     def seperated(name="Seperated"):
-        with tf.variable_op_scope([incoming], None, name) as scope:
-        # with tf.name_scope(name) as scope:
+        with tf.variable_op_scope([incoming], name) as scope:
             sep = [incoming] * ncols
             for col in range(ncols):
                 with tf.variable_op_scope([],None,"Column_{}".format(col)):
@@ -87,5 +85,3 @@ def fractal_block(incoming, filters, ncols=3, fsize=[3,3],
             global_drop = tf.logical_and(is_training, tf.random_uniform([])>.5)
             net = tf.cond(global_drop, lambda: columns, lambda: fractal, name="DropPath")
     return net
-
-# remember tf.mul
