@@ -5,7 +5,6 @@ from __future__ import print_function
 import functools
 
 from tensorflow.contrib.framework.python.ops import add_arg_scope
-from tensorflow.contrib.framework.python.ops import variables
 from tensorflow.contrib.layers.python.layers import initializers
 from tensorflow.contrib.layers.python.layers import utils
 
@@ -29,6 +28,7 @@ import tensorflow as tf
 from tensorflow.contrib import slim
 from tensorflow import transpose as T
 from tensorflow import mul
+from copy import deepcopy
 
 import tflearn
 
@@ -53,38 +53,77 @@ def join(cols, drop_prob = .15):
                   lambda: local_drop(cols, drop_prob), lambda: joined)
   return joined
 
-def fractal_block(inputs,
-                  block,
-                  num_cols,
-                  joined=True,
-                  reuse=False,
-                  variables_collections=None,
-                  outputs_collections=None,
-                  trainable=True,
-                  scope=None):
+def fractal_template(inputs,
+                     num_columns,
+                     block_fn,
+                     block_as,
+                     joined=True,
+                     reuse=False,
+                     scope=None):
+  """Template for making fractal blocks.
+
+  Given a function and a corresponding arg_scope `fractal_template`
+  will build a truncated fractal with `num_columns` columns.
   
-  def fractal_expand(inputs, block, num_cols, joined):
+  Args:
+    inputs: a 4-D tensor  `[batch_size, height, width, channels]`.
+    num_columns: integer, the columns in the fractal. 
+    block_fn: function to be called within each fractal.
+    block_as: A function that returns argscope for `block_fn`.
+    joined: boolean, whether the output columns should be joined.
+    reuse: whether or not the layer and its variables should be reused. To be
+      able to reuse the layer scope must be given.
+    scope: Optional scope for `variable_scope`.
+  """
+  def fractal_expand(inputs, num_columns, joined):
     '''Recursive Helper Function for making fractal'''
-    print(num_cols)
-    
-    if num_cols == 1:
-      out = block(inputs)
-      return out if joined else [out]
-    
-    left = block(inputs)
-    right = fractal_expand(inputs, block, num_cols-1, joined=True)
-    right = fractal_expand(right, block, num_cols-1, joined=False)
-    cols=[left]
-    cols.extend(right)
-    out = join(cols) if joined else cols
-    print(out)
-    return out
+    with block_as():
+      output = lambda cols: join(cols) if joined else cols
+      if num_columns == 1:
+        return output([block_fn(inputs)])
+      left = block_fn(inputs)
+      right = fractal_expand(inputs, num_columns-1, joined=True)
+      right = fractal_expand(right, num_columns-1, joined=False)
+      cols=[left]+right
+    return output(cols)
 
   with tf.variable_op_scope([inputs], scope, 'Fractal',
                             reuse=reuse) as scope:
-    net=fractal_expand(inputs, block, num_cols, joined)
+    net=fractal_expand(inputs, num_columns, joined)
   return net
 
-
-def wrap_fn(fn,*args,**kwargs):
-  return lambda inputs: fn(inputs,*args,**kwargs)
+def fractal_conv2d(inputs,
+                   num_columns,
+                   num_outputs,
+                   kernel_size,
+                   joined=True,
+                   stride=1,
+                   padding='SAME',
+                   rate=1,
+                   activation_fn=nn.relu,
+                   normalizer_fn=slim.batch_norm,
+                   normalizer_params=None,
+                   weights_initializer=initializers.xavier_initializer(),
+                   weights_regularizer=None,
+                   biases_initializer=None,
+                   biases_regularizer=None,
+                   reuse=None,
+                   variables_collections=None,
+                   outputs_collections=None,
+                   trainable=True,
+                   scope=None):
+  """Builds a fractal block with slim.conv2d.
+  
+  The fractal will have `num_columns` columns, and have 
+  Args:
+    inputs: a 4-D tensor  `[batch_size, height, width, channels]`.
+    num_columns: integer, the columns in the fractal. 
+      
+  """
+  locs = locals()
+  fractal_args = ['inputs','num_columns','joined']
+  asc_fn = lambda : slim.arg_scope([slim.conv2d],
+                                   **{arg:val for (arg,val) in locs.items()
+                                      if arg not in fractal_args})
+  return fractal_template(inputs, num_columns, slim.conv2d, asc_fn,
+                          joined, reuse, scope)
