@@ -2,27 +2,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import functools
-
-from tensorflow.contrib.framework.python.ops import add_arg_scope
-from tensorflow.contrib.layers.python.layers import initializers
-from tensorflow.contrib.layers.python.layers import utils
-
-
-from tensorflow.python.framework import dtypes
-from tensorflow.python.framework import ops
-from tensorflow.python.ops import array_ops
-from tensorflow.python.ops import init_ops
-from tensorflow.python.ops import math_ops
-from tensorflow.python.ops import nn
-from tensorflow.python.ops import standard_ops
-from tensorflow.python.ops import variable_scope
-
-
 import tensorflow as tf
-from tensorflow.contrib import slim
+
 from tensorflow import transpose
 from tensorflow import mul
+from tensorflow.contrib import slim
+from tensorflow.contrib.framework.python.ops import add_arg_scope
+from tensorflow.contrib.layers.python.layers import utils
+
 from copy import deepcopy
 
 def tensor_shape(tensor):
@@ -45,7 +32,7 @@ def apply_mask(mask,
   return transpose(mul(transpose(tensor), mask))
 
 def random_column(columns):
-  """Zeros out all except on of `columns`.
+  """Zeros out all except one of `columns`.
 
   Used for rounds with global drop path.
 
