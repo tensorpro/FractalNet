@@ -19,45 +19,104 @@ from tensorflow.python.ops import standard_ops
 from tensorflow.python.ops import variable_scope
 
 
-from tflearn.datasets import mnist
-xflat, _,_,_ = mnist.load_data()
-batch=xflat[:16].reshape(-1,28,28,1)
-net  = batch
-
 import tensorflow as tf
 from tensorflow.contrib import slim
-from tensorflow import transpose as T
+from tensorflow import transpose
 from tensorflow import mul
 from copy import deepcopy
 
-import tflearn
-
 def tensor_shape(tensor):
+  """Helper function to return shape of tensor."""
   return tensor.get_shape().as_list()
 
-def local_drop(cols, drop_prob=.85):
-  size = len(cols)-1
-  with tf.variable_op_scope(cols, None, "LocalDropPath"):
-    out = tf.to_float(cols)
-    drop_mask = tf.to_float(tf.concat(0,[[1],tf.random_uniform([size])])>drop_prob)
-    masked = T(mul(T(out),tf.random_shuffle(drop_mask)))
-    dropped = tf.reduce_sum(masked,0)/tf.reduce_sum(drop_mask,0)
-  return dropped
+def apply_mask(mask,
+               columns):
+  """Uses a boolean mask to zero out some columns.
 
-def join(cols, drop_prob = .15):
-  if len(cols)==1:
-    return cols[0]
-  with tf.variable_op_scope(cols, None, "Join"):
-    joined=tf.reduce_mean(cols,0)
-    out = tf.cond(tflearn.get_training_mode(),
-                  lambda: local_drop(cols, drop_prob), lambda: joined)
-  return joined
+  Used instead of boolean mask so that output has same 
+  shape as input.
+
+  Args:
+    mask:boolean tensor.
+    columns:columns of fractal block.
+  """
+  tensor = tf.convert_to_tensor(columns)
+  mask = tf.cast(mask, tensor.dtype)
+  return transpose(mul(transpose(tensor), mask))
+
+def random_column(columns):
+  """Zeros out all except on of `columns`.
+
+  Used for rounds with global drop path.
+
+  Args:
+    columns: the columns of a fractal block to be selected from.
+  """
+  num_columns = tensor_shape(columns)[0]
+  mask = tf.random_shuffle([True]+[False]*(num_columns-1))
+  return apply_mask(mask, columns)
+
+def drop_some(columns,
+              drop_prob=.15):
+  """Zeros out columns with probability `drop_prob`.
+
+  Used for rounds of local drop path.
+  TODO: Rescale outputs to compensate for dropped columns.
+  """
+  num_columns = tensor_shape(columns)[0]
+  mask = tf.random_uniform([num_columns])>drop_prob
+  return tf.cond(tf.reduce_any(mask),
+                 lambda : apply_mask(mask, columns),
+                 lambda : random_column(columns))
+
+def coin_flip(prob=.5):
+  """Random boolean variable, with `prob` chance of being true.
+ 
+  Used to choose between local and global drop path.
+
+  Args:
+    prob:float, probability of being True.
+  """
+  with tf.variable_op_scope([],None,"CoinFlip"):
+    coin = tf.random_uniform([1])[0]>prob
+  return coin
+
+def drop_path(columns,
+              coin):
+  with tf.variable_op_scope([columns], None, "DropPath"):
+    out = tf.cond(coin,
+                  lambda : drop_some(columns),
+                  lambda : random_column(columns))
+  return out
+
+def join(columns,
+         is_training,
+         coin):
+  """Takes mean of the columns, applies drop path if `is_training`.
+
+  Args:
+    columns: columns of fractal block.
+    is_training: boolean in tensor form. Determines whether drop path 
+      should be used.
+    coin: boolean in tensor form. Determines whether drop path is
+     local or global.
+  """
+  if len(columns)==1:
+    return columns[0]
+  with tf.variable_op_scope(columns, None, "Join"):
+    columns = tf.convert_to_tensor(columns)
+    columns = tf.cond(is_training,
+                      lambda: drop_path(columns, coin),
+                      lambda: columns)
+    out = tf.reduce_mean(columns, 0)
+  return out
 
 def fractal_template(inputs,
                      num_columns,
                      block_fn,
-                     block_as,
+                     block_asc,
                      joined=True,
+                     is_training=True,
                      reuse=False,
                      scope=None):
   """Template for making fractal blocks.
@@ -75,10 +134,11 @@ def fractal_template(inputs,
       able to reuse the layer scope must be given.
     scope: Optional scope for `variable_scope`.
   """
+  
   def fractal_expand(inputs, num_columns, joined):
     '''Recursive Helper Function for making fractal'''
-    with block_as():
-      output = lambda cols: join(cols) if joined else cols
+    with block_asc():
+      output = lambda cols: join(cols, coin, is_training) if joined else cols
       if num_columns == 1:
         return output([block_fn(inputs)])
       left = block_fn(inputs)
@@ -89,7 +149,10 @@ def fractal_template(inputs,
 
   with tf.variable_op_scope([inputs], scope, 'Fractal',
                             reuse=reuse) as scope:
+    is_training = tf.constant(is_training)
+    coin = coin_flip()
     net=fractal_expand(inputs, num_columns, joined)
+
   return net
 
 def fractal_conv2d(inputs,
@@ -110,6 +173,7 @@ def fractal_conv2d(inputs,
                    reuse=None,
                    variables_collections=None,
                    outputs_collections=None,
+                   is_training=True,
                    trainable=True,
                    scope=None):
   """Builds a fractal block with slim.conv2d.
@@ -121,9 +185,9 @@ def fractal_conv2d(inputs,
       
   """
   locs = locals()
-  fractal_args = ['inputs','num_columns','joined']
+  fractal_args = ['inputs','num_columns','joined','is_training']
   asc_fn = lambda : slim.arg_scope([slim.conv2d],
                                    **{arg:val for (arg,val) in locs.items()
                                       if arg not in fractal_args})
   return fractal_template(inputs, num_columns, slim.conv2d, asc_fn,
-                          joined, reuse, scope)
+                          joined, is_training, reuse, scope)                                                                                                                                                                       
