@@ -6,11 +6,11 @@ import tensorflow as tf
 
 from tensorflow import transpose
 from tensorflow import mul
+from tensorflow import nn
+from tensorflow.python.ops import nn
 from tensorflow.contrib import slim
 from tensorflow.contrib.framework.python.ops import add_arg_scope
-from tensorflow.contrib.layers.python.layers import utils
-
-from copy import deepcopy
+from tensorflow.contrib.layers.python.layers import initializers, utils
 
 def tensor_shape(tensor):
   """Helper function to return shape of tensor."""
