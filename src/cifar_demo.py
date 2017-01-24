@@ -48,16 +48,18 @@ net = input_data(shape=[None, 32, 32, 3],
 filters = [64,128,256,512,512]
 for f in filters:
   net = fractal_conv2d(net, 4, f, 3,
-                       normalizer_fn=batch_normalization,
-                       is_training = tflearn.config.is_training)
-  net = slim.max_pool2d(net,2)
+                       normalizer_fn=batch_normalization)
+  net = slim.max_pool2d(net,2, 2)
 
 
 
-net = conv_2d(net, 10, 3)
+net = conv_2d(net, 10, 1)
 net = global_avg_pool(net)
+net = softmax(net)
+
 net = regression(net, optimizer='adam',
-                     loss='categorical_crossentropy')
+                     loss='categorical_crossentropy',
+                 learning_rate=.002)
 
 # Train using classifier
 model = tflearn.DNN(net, tensorboard_verbose=0)
