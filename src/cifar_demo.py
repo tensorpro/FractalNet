@@ -21,6 +21,7 @@ from tflearn.data_augmentation import ImageAugmentation
 from tflearn.activations import softmax
 from fractal_block import fractal_conv2d
 from tensorflow.contrib import slim
+from tflearn.layers.normalization import batch_normalization
 
 # Data loading and preprocessing
 from tflearn.datasets import cifar10
@@ -44,9 +45,9 @@ net = input_data(shape=[None, 32, 32, 3],
                      data_preprocessing=img_prep,
                      data_augmentation=img_aug)
 
-filters = [4,8]
+filters = [64,128,256,512,512]
 for f in filters:
-  net = fractal_conv2d(net, 4, f,3)
+  net = fractal_conv2d(net, 4, f,3, normalizer_fn=batch_normalization)
   net = slim.max_pool2d(net,2)
 
 
@@ -60,4 +61,4 @@ net = regression(net, optimizer='adam',
 # Train using classifier
 model = tflearn.DNN(net, tensorboard_verbose=0)
 model.fit(X, Y, n_epoch=50, shuffle=True, validation_set=(X_test, Y_test),
-          show_metric=True, batch_size=1, run_id='cifar10_cnn')
+          show_metric=True, batch_size=32, run_id='cifar10_cnn')
