@@ -65,5 +65,5 @@ net = regression(net, optimizer='adam',
 
 # Train using classifier
 model = tflearn.DNN(net, tensorboard_verbose=0)
-model.fit(X, Y, n_epoch=50, shuffle=True, validation_set=(X_test, Y_test),
+model.fit(X, Y, n_epoch=400, shuffle=True, validation_set=(X_test, Y_test),
           show_metric=True, batch_size=32, run_id='cifar10_cnn')
