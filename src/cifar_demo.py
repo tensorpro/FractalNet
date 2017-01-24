@@ -45,12 +45,14 @@ net = input_data(shape=[None, 32, 32, 3],
                      data_preprocessing=img_prep,
                      data_augmentation=img_aug)
 
-filters = [64,128,256,512,512]
+filters = [64,128,256,512]
 for f in filters:
   net = fractal_conv2d(net, 4, f, 3,
                        normalizer_fn=batch_normalization)
   net = slim.max_pool2d(net,2, 2)
 
+net = fractal_conv2d(net, 4, 512, 2,
+                     normalizer_fn=batch_normalization)
 
 
 net = conv_2d(net, 10, 1)
