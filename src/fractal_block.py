@@ -50,12 +50,11 @@ def drop_some(columns,
   """Zeros out columns with probability `drop_prob`.
 
   Used for rounds of local drop path.
-  TODO: Rescale outputs to compensate for dropped columns.
   """
   num_columns = tensor_shape(columns)[0]
   mask = tf.random_uniform([num_columns])>drop_prob
   return tf.cond(tf.reduce_any(mask),
-                 lambda : apply_mask(mask, columns),
+                 lambda : apply_mask(mask, columns)*tf.reduce_sum(mask)/num_columns,
                  lambda : random_column(columns))
 
 def coin_flip(prob=.5):
