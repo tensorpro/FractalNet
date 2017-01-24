@@ -55,8 +55,7 @@ for f in filters:
 net = conv_2d(net, 10, 3)
 net = global_avg_pool(net)
 net = regression(net, optimizer='adam',
-                     loss='categorical_crossentropy',
-                     learning_rate=0.001)
+                     loss='categorical_crossentropy')
 
 # Train using classifier
 model = tflearn.DNN(net, tensorboard_verbose=0)
