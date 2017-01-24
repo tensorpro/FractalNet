@@ -11,6 +11,7 @@ from tensorflow.python.ops import nn
 from tensorflow.contrib import slim
 from tensorflow.contrib.framework.python.ops import add_arg_scope
 from tensorflow.contrib.layers.python.layers import initializers, utils
+from tflearn import get_training_mode
 
 def tensor_shape(tensor):
   """Helper function to return shape of tensor."""
@@ -77,9 +78,9 @@ def drop_path(columns,
   return out
 
 def join(columns,
-         is_training,
          coin):
-  """Takes mean of the columns, applies drop path if `is_training`.
+  """Takes mean of the columns, applies drop path if 
+     `tflearn.get_training_mode()` is True.
 
   Args:
     columns: columns of fractal block.
@@ -92,7 +93,7 @@ def join(columns,
     return columns[0]
   with tf.variable_op_scope(columns, None, "Join"):
     columns = tf.convert_to_tensor(columns)
-    columns = tf.cond(is_training,
+    columns = tf.cond(tflearn.get_training_mode(),
                       lambda: drop_path(columns, coin),
                       lambda: columns)
     out = tf.reduce_mean(columns, 0)
@@ -125,7 +126,7 @@ def fractal_template(inputs,
   def fractal_expand(inputs, num_columns, joined):
     '''Recursive Helper Function for making fractal'''
     with block_asc():
-      output = lambda cols: join(cols, coin, is_training) if joined else cols
+      output = lambda cols: join(cols, coin) if joined else cols
       if num_columns == 1:
         return output([block_fn(inputs)])
       left = block_fn(inputs)
@@ -136,7 +137,6 @@ def fractal_template(inputs,
 
   with tf.variable_op_scope([inputs], scope, 'Fractal',
                             reuse=reuse) as scope:
-    is_training = tf.constant(is_training)
     coin = coin_flip()
     net=fractal_expand(inputs, num_columns, joined)
 
@@ -149,7 +149,7 @@ def fractal_conv2d(inputs,
                    joined=True,
                    stride=1,
                    padding='SAME',
-                   rate=1,
+                   # rate=1,
                    activation_fn=nn.relu,
                    normalizer_fn=slim.batch_norm,
                    normalizer_params=None,
