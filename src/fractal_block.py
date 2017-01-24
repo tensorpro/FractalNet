@@ -53,11 +53,11 @@ def drop_some(columns,
   """
   num_columns = tensor_shape(columns)[0]
   mask = tf.random_uniform([num_columns])>drop_prob
-  scale = tf.reduce_sum(tf.cast(mask, tf.int32))/num_columns
+  scale = num_columns*tf.reduce_sum(tf.cast(mask, tf.int32))
 
   return tf.cond(tf.reduce_any(mask),
-                 lambda : apply_mask(mask, columns),
-                 lambda : random_column(columns))
+                 lambda : apply_mask(mask, columns) * scale,
+                 lambda : random_column(columns) * num_columns)
 
 def coin_flip(prob=.5):
   """Random boolean variable, with `prob` chance of being true.
