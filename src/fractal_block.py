@@ -22,7 +22,7 @@ def apply_mask(mask,
                columns):
   """Uses a boolean mask to zero out some columns.
 
-  Used instead of boolean mask so that output has same 
+  Used instead of boolean mask so that output has same
   shape as input.
 
   Args:
@@ -53,13 +53,15 @@ def drop_some(columns,
   """
   num_columns = tensor_shape(columns)[0]
   mask = tf.random_uniform([num_columns])>drop_prob
+  scale = tf.reduce_sum(tf.cast(mask, tf.int32))/num_columns
+
   return tf.cond(tf.reduce_any(mask),
-                 lambda : apply_mask(mask, columns)*tf.reduce_sum(mask)/num_columns,
+                 lambda : apply_mask(mask, columns),
                  lambda : random_column(columns))
 
 def coin_flip(prob=.5):
   """Random boolean variable, with `prob` chance of being true.
- 
+
   Used to choose between local and global drop path.
 
   Args:
@@ -79,12 +81,12 @@ def drop_path(columns,
 
 def join(columns,
          coin):
-  """Takes mean of the columns, applies drop path if 
+  """Takes mean of the columns, applies drop path if
      `tflearn.get_training_mode()` is True.
 
   Args:
     columns: columns of fractal block.
-    is_training: boolean in tensor form. Determines whether drop path 
+    is_training: boolean in tensor form. Determines whether drop path
       should be used.
     coin: boolean in tensor form. Determines whether drop path is
      local or global.
@@ -111,10 +113,10 @@ def fractal_template(inputs,
 
   Given a function and a corresponding arg_scope `fractal_template`
   will build a truncated fractal with `num_columns` columns.
-  
+
   Args:
     inputs: a 4-D tensor  `[batch_size, height, width, channels]`.
-    num_columns: integer, the columns in the fractal. 
+    num_columns: integer, the columns in the fractal.
     block_fn: function to be called within each fractal.
     block_as: A function that returns argscope for `block_fn`.
     joined: boolean, whether the output columns should be joined.
@@ -122,7 +124,7 @@ def fractal_template(inputs,
       able to reuse the layer scope must be given.
     scope: Optional scope for `variable_scope`.
   """
-  
+
   def fractal_expand(inputs, num_columns, joined):
     '''Recursive Helper Function for making fractal'''
     with block_asc():
@@ -164,12 +166,10 @@ def fractal_conv2d(inputs,
                    trainable=True,
                    scope=None):
   """Builds a fractal block with slim.conv2d.
-  
-  The fractal will have `num_columns` columns, and have 
+  The fractal will have `num_columns` columns, and have
   Args:
     inputs: a 4-D tensor  `[batch_size, height, width, channels]`.
-    num_columns: integer, the columns in the fractal. 
-      
+    num_columns: integer, the columns in the fractal.
   """
   locs = locals()
   fractal_args = ['inputs','num_columns','joined','is_training']
@@ -177,4 +177,4 @@ def fractal_conv2d(inputs,
                                    **{arg:val for (arg,val) in locs.items()
                                       if arg not in fractal_args})
   return fractal_template(inputs, num_columns, slim.conv2d, asc_fn,
-                          joined, is_training, reuse, scope)                                                                                                                                                                       
+                          joined, is_training, reuse, scope)
