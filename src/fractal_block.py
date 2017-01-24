@@ -11,6 +11,7 @@ from tensorflow.python.ops import nn
 from tensorflow.contrib import slim
 from tensorflow.contrib.framework.python.ops import add_arg_scope
 from tensorflow.contrib.layers.python.layers import initializers, utils
+import tflearn
 from tflearn import get_training_mode
 
 def tensor_shape(tensor):
