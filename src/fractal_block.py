@@ -53,7 +53,7 @@ def drop_some(columns,
   """
   num_columns = tensor_shape(columns)[0]
   mask = tf.random_uniform([num_columns])>drop_prob
-  scale = num_columns*tf.reduce_sum(tf.cast(mask, tf.int32))
+  scale = num_columns*tf.reduce_sum(tf.cast(mask, tf.float32))
 
   return tf.cond(tf.reduce_any(mask),
                  lambda : apply_mask(mask, columns) * scale,
