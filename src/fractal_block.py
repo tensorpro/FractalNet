@@ -76,7 +76,7 @@ def drop_path(columns,
   with tf.variable_op_scope([columns], None, "DropPath"):
     out = tf.cond(coin,
                   lambda : drop_some(columns),
-                  lambda : random_column(columns))
+                  lambda : random_column(columns)*len(columns))
   return out
 
 def join(columns,
