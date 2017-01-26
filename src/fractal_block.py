@@ -43,7 +43,7 @@ def random_column(columns):
   """
   num_columns = tensor_shape(columns)[0]
   mask = tf.random_shuffle([True]+[False]*(num_columns-1))
-  return apply_mask(mask, columns)
+  return apply_mask(mask, columns)* num_columns
 
 def drop_some(columns,
               drop_prob=.15):
@@ -57,7 +57,7 @@ def drop_some(columns,
 
   return tf.cond(tf.reduce_any(mask),
                  lambda : apply_mask(mask, columns) * scale,
-                 lambda : random_column(columns) * num_columns)
+                 lambda : random_column(columns))
 
 def coin_flip(prob=.5):
   """Random boolean variable, with `prob` chance of being true.
@@ -76,7 +76,7 @@ def drop_path(columns,
   with tf.variable_op_scope([columns], None, "DropPath"):
     out = tf.cond(coin,
                   lambda : drop_some(columns),
-                  lambda : random_column(columns)*len(columns))
+                  lambda : random_column(columns))
   return out
 
 def join(columns,
